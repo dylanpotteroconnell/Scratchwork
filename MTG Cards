@@ -14,20 +14,22 @@ newStandardSets <- c("core", "expansion")
 #  "draft_innovation", "commander")
 
 all_cards <- bind_rows(map(allsets, function(set) {
-  if (set$type %in% newStandardSets){
+  if (set$type %in% newStandardSets & 
+      !set$code %in% c("FBB","SUM") ){
     # For diagnostic
     #   print(set$name)
     cards <- as_tibble(set[["cards"]])
-    # Test code to find which set was causing a warning
-#    if(! "prices" %in% names(cards)){print(set$name)}
     # Legalities and prices are stored as data frames within a single column
     # Append them to the side of the new tibble
     cards.tibble <- bind_cols(as_tibble(cards[,unlist(map(map(cards, class), function(x) ! x %in% c("list", "data.frame")))]), 
                               as_tibble(cards$legalities),
                               as_tibble(cards$prices[[1]]))
+    if(! "standard" %in% names(cards.tibble)){print(set$code)
+      print(set$name)
+      print(set$code)}    
     cards.tibble %>% 
     # Rename the added price-date columns
-      rename_all(gsub, 
+      rename_all(str_replace_all, 
                  pattern="([0-9]{4}-[0-9]{2}-[0-9]{2})", 
                  replacement="price_on_\\1") %>%
       # Rename the format legalities columns
@@ -42,3 +44,8 @@ all_cards <- bind_rows(map(allsets, function(set) {
              set_name=set$name)
   }
 }))
+
+all_cards <- all_cards %>%
+  select(name, set_name, set_code, release_date, everything()) %>%
+  mutate_at(vars(contains("legal_in")), funs(ifelse(is.na(.), "Not Legal", .)))
+
